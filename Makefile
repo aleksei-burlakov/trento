@@ -7,6 +7,8 @@ default: clean mod-tidy fmt vet-check test build
 .PHONY: build clean clean-binary clean-frontend cross-compiled default fmt fmt-check generate mod-tidy test vet-check web-assets
 
 build: trento
+install: trento
+	install -m 0755 trento $(DESTDIR)$(PREFIX)/bin
 trento: web-assets
 	$(GO_BUILD)
 

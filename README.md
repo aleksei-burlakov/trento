@@ -1,7 +1,7 @@
 # Trento
 
 An open cloud-native web console improving on the life of SAP Applications
-administrators.
+administrators .
 
 _Trento is a city on the Adige River in Trentino-Alto Adige/Südtirol in Italy.
 [...] It is one of the nation's wealthiest and most prosperous cities, [...]

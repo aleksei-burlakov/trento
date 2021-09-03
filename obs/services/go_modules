@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+#
+# An OBS Source Service to retrieve and verify Go module sources
+# as specified in go.mod and go.sum.
+#
+# (C) 2019 SUSE LLC
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# See http://www.gnu.org/licenses/gpl-2.0.html for full license text.
+#
+"""\
+OBS Source Service to download, verify and vendor Go module
+dependency sources. Using go.mod and go.sum present in a Go
+application, call go tools in sequence:
+
+go mod download
+go mod verify
+go mod vendor
+
+obs-service-go_modules will create vendor.tar.gz containing the
+vendor/ directory populated by go mod vendor.
+
+See README.md for additional documentation.
+"""
+
+import logging
+import argparse
+import re
+import tarfile
+import os
+import shutil
+
+from pathlib import Path
+from subprocess import check_output
+from subprocess import CalledProcessError
+
+app_name = "obs-service-go_modules"
+vendor_tarname = "vendor.tar.gz"
+
+description = __doc__
+
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger(app_name)
+
+parser = argparse.ArgumentParser(
+    description=description, formatter_class=argparse.RawDescriptionHelpFormatter
+)
+parser.add_argument("--strategy", default="vendor")
+parser.add_argument("--archive")
+parser.add_argument("--outdir")
+args = parser.parse_args()
+
+outdir = args.outdir
+
+
+def archive_autodetect():
+    """ Find the most likely candidate file that contains go.mod and go.sum.
+        For most go applications this will be app-x.y.z.tar.gz.
+        Use the name of the .spec file as the stem for the archive to detect.
+        Archive formats supported:
+        - .tar.gz
+    """
+    log.info(f"Autodetecting archive since no archive param provided in _service")
+    cwd = Path.cwd()
+    # first .spec under cwd or None
+    spec = next(reversed(sorted(Path(cwd).glob("*.spec"))), None)
+    if not spec:
+        log.error(f"Archive autodetection found no spec file under {cwd}")
+        exit(1)
+    else:
+        spec_dir = spec.parent  # typically the same as cwd
+        spec_stem = spec.stem  # stem is app in app.spec
+        # highest sorted archive under spec_dir
+        pattern = f"{spec.stem}*.tar.gz"
+        archive = next(reversed(sorted(Path(spec_dir).glob(pattern))), None)
+    if not archive:
+        log.error(f"Archive autodetection found no matching archive under {cwd}")
+        exit(1)
+    else:
+        log.info(f"Archive autodetected at {archive}")
+        # Check that app.spec Version: directive value
+        # is a substring of detected archive filename
+        # Warn if there is disagreement between the versions.
+        pattern = re.compile(r"^Version:\s+([\S]+)$", re.IGNORECASE)
+        with spec.open(encoding="utf-8") as f:
+            for line in f:
+                versionmatch = pattern.match(line)
+                if versionmatch:
+                    version = versionmatch.groups(0)[0]
+            if not version:
+                log.warning(f"Version not found in {spec.name}")
+            else:
+                if not (version in archive.name):
+                    log.warning(
+                        f"Version {version} in {spec.name} does not match {archive.name}"
+                    )
+        return str(archive.name)  # return string not PosixPath
+
+
+archive = args.archive or archive_autodetect()
+log.info(f"Using archive {archive}")
+
+basename = archive.replace(".tar.gz", "")  # currently only .tar.gz supported
+
+
+def extract(filename, dir):
+    if filename.endswith(".tar.gz"):
+        tar = tarfile.open(filename)
+        tar.extractall(path=dir)
+        tar.close()
+    else:
+        log.info(f"Unsupported archive file format for {filename}")
+        exit(1)
+
+
+def find_file(path, filename):
+    for root, dirs, files in os.walk(path):
+        if filename in files:
+            return os.path.join(root, filename)
+
+
+def cmd_go_mod(cmd, dir):
+    try:
+        log.info(f"go mod {cmd}")
+        output = check_output(["go", "mod", cmd], cwd=dir).decode("utf-8").strip()
+        if output:
+            log.info(output)
+        return True
+    except CalledProcessError as e:
+        error = e.output.decode("utf-8").strip()
+        if error:
+            log.info(error)
+        return False
+
+
+def main():
+    log.info(f"Running OBS Source Service: {app_name}")
+
+    log.info(f"Extracting {archive} to {outdir}")
+    extract(archive, outdir)
+
+    go_mod_path = find_file(outdir, "go.mod")
+    if go_mod_path:
+        go_mod_dir = os.path.dirname(go_mod_path)
+        log.info(f"Using go.mod found at {go_mod_path}")
+    else:
+        log.info(f"File go.mod not found under {outdir}")
+        exit(1)
+
+    if args.strategy == "vendor":
+
+        cmd_go_mod("download", go_mod_dir)
+        cmd_go_mod("verify", go_mod_dir)
+        cmd_go_mod("vendor", go_mod_dir)
+
+        log.info(f"Vendor go.mod dependencies to {vendor_tarname}")
+        vendor_tarfile = os.path.join(outdir, vendor_tarname)
+        vendor_dir = os.path.join(go_mod_dir, "vendor")
+        with tarfile.open(vendor_tarfile, "w:gz") as tar:
+            tar.add(vendor_dir, arcname=("vendor"))
+
+        # remove extracted Go application source
+        try:
+            to_remove = os.path.join(outdir, basename)
+            shutil.rmtree(to_remove)
+        except FileNotFoundError as e:
+            log.error(f"Could not remove directory not found {to_remove}")
+
+
+if __name__ == "__main__":
+    main()

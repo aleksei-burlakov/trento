@@ -1,0 +1,44 @@
+name: Rebuild trento in obs
+on: [push]
+jobs:
+  Explore-GitHub-Actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: Install osc prerequisites
+        run: sudo apt-get install -y osc ssl-cert python3-m2crypto python3-packaging python3-lxml
+      - name: Install osc services
+        run: |
+          echo 'deb http://download.opensuse.org/repositories/openSUSE:/Tools/xUbuntu_21.04/ /' | sudo tee /etc/apt/sources.list.d/openSUSE:Tools.list
+          curl -fsSL https://download.opensuse.org/repositories/openSUSE:Tools/xUbuntu_21.04/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/openSUSE_Tools.gpg > /dev/null
+          sudo apt update
+          sudo apt-get install -y obs-service-tar-scm obs-service-set-version obs-service-recompress
+          sudo cp obs/services/* /usr/lib/obs/service/
+      - name: Install oscrc
+        env:
+          BOT_USERNAME: ${{ secrets.BOT_USERNAME }}
+          BOT_PASSWORD: ${{ secrets.BOT_PASSWORD }}
+        run: |
+          mkdir -p /home/runner/.config/osc/
+          echo "user=$BOT_USERNAME" >> obs/oscrc
+          echo "pass=$BOT_PASSWORD" >> obs/oscrc
+          cp obs/oscrc /home/runner/.config/osc/
+      - name: Run the obs services
+        env:
+          OBS_PROJECT: home:aburlakov:simple-build
+        run: |
+          osc co $OBS_PROJECT trento
+          cd ${OBS_PROJECT}/trento
+          osc rm *
+          cp ../../obs/specs/* .
+          osc service dr
+      - name: Submit the package
+        env:
+          OBS_PROJECT: home:aburlakov:simple-build
+        run: |
+          cd ${OBS_PROJECT}/trento
+          rm -rf trento "*.sums"
+          osc add *
+          ls -la
+          osc commit -m "$(date)"

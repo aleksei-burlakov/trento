@@ -1,0 +1,77 @@
+name: Rebuild trento in obs
+on: [push]
+env:
+  PACKAGE_NAME: trento
+  OBS_USER: ${{ secrets.OBS_USER }}
+  OBS_PASS: ${{ secrets.OBS_PASS }}
+  OBS_PROJECT: ${{ secrets.OBS_PROJECT}}
+  TARGET_PROJECT: ${{ secrets.TARGET_PROJECT}}
+  VERSION: "0.4.1"
+  FOLDER: packaging/suse
+jobs:
+  validation:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+  delivery:
+    needs: validation
+    runs-on: ubuntu-18.04
+    if: ${{ github.event_name != 'pull_request' }}
+    container:
+      image: shap/continuous_deliver
+      env:
+        OBS_UNSTABLE: https://download.opensuse.org/repositories/OBS:/Server:/Unstable/SLE_15_SP3/OBS:Server:Unstable.repo
+        OBS_UNSTABLE_KEY: https://download.opensuse.org/repositories/OBS:/Server:/Unstable/SLE_15_SP3/repodata/repomd.xml.key
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: configure OSC
+    # OSC credentials must be configured beforehand as the HOME variables cannot be changed from /github/home
+    # that is used to run osc commands
+      run: |
+        /scripts/init_osc_creds.sh
+        mkdir -p $HOME/.config/osc
+        cp /root/.config/osc/oscrc $HOME/.config/osc
+    - name: update go and install obs-service-node_modules
+      run: |
+        rpm --import ${OBS_UNSTABLE_KEY}
+        zypper ar ${OBS_UNSTABLE}
+        zypper ref
+        zypper in -y obs-service-node_modules go
+        go version
+    - name: deliver package
+      run: |
+        echo "github.sha = ${{ github.sha }}"
+        echo "github.repository = ${{ github.repository }}"
+        sed -i 's~%%REVISION%%~${{ github.sha }}~' $FOLDER/_service && \
+        sed -i 's~%%REPOSITORY%%~${{ github.repository }}~' $FOLDER/_service && \
+        sed -i 's~%%VERSION%%~${ VERSION }~' $FOLDER/_service && \
+        cp $FOLDER/_service . && \
+        /scripts/upload.sh
+
+  submit:
+    needs: delivery
+    runs-on: ubuntu-18.04
+    if: ${{ github.event_name != 'pull_request' }}
+    container:
+      image: shap/continuous_deliver
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: configure OSC
+      run: |
+        /scripts/init_osc_creds.sh
+        mkdir -p $HOME/.config/osc
+        cp /root/.config/osc/oscrc $HOME/.config/osc
+    - name: submit package
+      run: |
+       sed -i 's~%%REVISION%%~${{ github.sha }}~' $FOLDER/_service && \
+       sed -i 's~%%REPOSITORY%%~${{ github.repository }}~' $FOLDER/_service && \
+       sed -i 's~%%VERSION%%~${VERSION}~' $FOLDER/_service && \
+       cp $FOLDER/_service . && \
+       /scripts/submit.sh

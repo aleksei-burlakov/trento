@@ -18,8 +18,8 @@ Usage:
   sudo ./install.sh --bind-ip <127.0.0.1> --server-ip <192.168.122.1>
 
 Arguments:
-  --bind-ip    The consul bind ip.
-  --server-ip  The consul server ip.
+  --bind-ip    The bind ip.
+  --server-ip  The server ip.
   --name       The node name.
   --help       Print this help.
 END
@@ -53,12 +53,12 @@ eval set --$opts
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --bind-ip)
-            CONSUL_BIND_IP=$2
+            BIND_IP=$2
             shift 2
             ;;
 
         --server-ip)
-            CONSUL_SERVER_IP=$2
+            SERVER_IP=$2
             shift 2
             ;;
 
@@ -73,11 +73,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [ -z "$CONSUL_BIND_IP" ]; then
-    read -p "Please provide the consul bind IP: "   CONSUL_BIND_IP
+if [ -z "$BIND_IP" ]; then
+    read -p "Please provide the bind IP: "   BIND_IP
 fi
-if [ -z "$CONSUL_SERVER_IP" ]; then
-    read -p "Please provide the consul server IP: " CONSUL_SERVER_IP
+if [ -z "$SERVER_IP" ]; then
+    read -p "Please provide the server IP: " SERVER_IP
 fi
 if [ -z "$NODE_NAME" ]; then
     NODE_NAME="$(hostname)"
@@ -86,10 +86,10 @@ fi
 TRENTO_REPO_KEY=${REPO_KEY:-"https://download.opensuse.org/repositories/devel:/sap:/trento/15.3/repodata/repomd.xml.key"}
 TRENTO_REPO=${REPO:-"https://download.opensuse.org/repositories/devel:/sap:/trento/15.3/devel:sap:trento.repo"}
 
-CONSUL_VERSION=1.9.6
-CONSUL_HOME=/srv/consul
-CONSUL_CONFIG_PATH="$CONSUL_HOME/consul.d"
-CONSUL_HCL_TEMPLATE='data_dir = "/srv/consul/data/"
+KVSTORE_VERSION=1.9.6
+SRV_HOME=/srv/consul
+CONFIG_PATH="$SRV_HOME/consul.d"
+HCL_TEMPLATE='data_dir = "/srv/consul/data/"
 node_name = "@NODE_NAME@"
 log_level = "DEBUG"
 datacenter = "dc1"
@@ -98,8 +98,8 @@ bind_addr = "@BIND_ADDR@"
 client_addr = "0.0.0.0"
 retry_join = ["@JOIN_ADDR@"]'
 
-CONSUL_SERVICE_FILE_NAME="consul.service"
-CONSUL_SERVICE_FILE='[Unit]
+SERVICE_FILE_NAME="consul.service"
+SERVICE_FILE='[Unit]
 Description="HashiCorp Consul - A service mesh solution"
 Documentation=https://www.consul.io/
 Requires=network-online.target
@@ -126,60 +126,39 @@ fi
 
 echo "Installing trento-agent..."
 
-function install_consul() {
-    if ! which which  >/dev/null 2>/dev/null; then
-        echo "* Installing which"
-        zypper in -y which
-    fi
+function install_kvstore() {
     if ! which unzip  >/dev/null 2>/dev/null; then
         echo "* Installing unzip"
         zypper in -y unzip
     fi
-    if ! which curl  >/dev/null 2>/dev/null; then
-        echo "* Installing curl"
-        zypper in -y curl
-    fi
-
-    echo "* Installing Consul"
-    mkdir -p $CONSUL_CONFIG_PATH
-    pushd -- "$CONSUL_HOME" >/dev/null
-    curl -f -sS -O -L "https://releases.hashicorp.com/consul/$CONSUL_VERSION/consul_${CONSUL_VERSION}_linux_amd64.zip" >/dev/null
-    unzip -o "consul_${CONSUL_VERSION}_linux_amd64".zip >/dev/null
-    rm "consul_${CONSUL_VERSION}_linux_amd64".zip
+    mkdir -p $CONFIG_PATH
+    pushd -- "$SRV_HOME" >/dev/null
+    curl -f -sS -O -L "https://releases.hashicorp.com/consul/$KVSTORE_VERSION/consul_${KVSTORE_VERSION}_linux_amd64.zip" >/dev/null
+    unzip -o "consul_${KVSTORE_VERSION}_linux_amd64".zip >/dev/null
+    rm "consul_${KVSTORE_VERSION}_linux_amd64".zip
     popd >/dev/null
-    echo "  Consul is installed in $CONSUL_HOME"
 }
 
-function setup_consul() {
-    echo "* Setting up Consul"
-    echo "$CONSUL_HCL_TEMPLATE" \
-        | sed "s|@JOIN_ADDR@|${CONSUL_SERVER_IP}|g" \
-        | sed "s|@BIND_ADDR@|${CONSUL_BIND_IP}|g" \
+function setup_kvstore() {
+    echo "$HCL_TEMPLATE" \
+        | sed "s|@JOIN_ADDR@|${SERVER_IP}|g" \
+        | sed "s|@BIND_ADDR@|${BIND_IP}|g" \
         | sed "s|@NODE_NAME@|${NODE_NAME}|g" \
-        > ${CONSUL_CONFIG_PATH}/consul.hcl
-    echo "  Consul configuration is saved in ${CONSUL_CONFIG_PATH}/consul.hcl"
+        > ${CONFIG_PATH}/consul.hcl
 
-    if [ -f "/etc/systemd/system/$CONSUL_SERVICE_FILE_NAME" ]; then
+    if [ -f "/etc/systemd/system/$SERVICE_FILE_NAME" ]; then
         echo "  Warning: Systemd unit already installed. Removing..."
-        systemctl stop "$CONSUL_SERVICE_FILE_NAME"
-        rm "/etc/systemd/system/$CONSUL_SERVICE_FILE_NAME"
+        systemctl stop "$SERVICE_FILE_NAME"
+        rm "/etc/systemd/system/$SERVICE_FILE_NAME"
     fi
 
-    echo "$CONSUL_SERVICE_FILE" > /etc/systemd/system/$CONSUL_SERVICE_FILE_NAME
-    echo "  ${CONSUL_SERVICE_FILE_NAME} is installed in /etc/systemd/system/"
+    echo "$SERVICE_FILE" > /etc/systemd/system/$SERVICE_FILE_NAME
     systemctl daemon-reload
-    systemctl enable --now $CONSUL_SERVICE_FILE_NAME
+    # These are good manners to disable all installed services explicitelly
+    systemctl disable --now $SERVICE_FILE_NAME
 }
 
 function install_trento() {
-    if ! which which  >/dev/null 2>/dev/null; then
-	echo "* Installing \"which\""
-        zypper in -y which >/dev/null
-    fi
-    if ! which curl >/dev/null 2>/dev/null; then
-	echo "* Installing curl"
-        zypper in -y curl >/dev/null
-    fi
     rpm --import ${TRENTO_REPO_KEY} >/dev/null
     path=${TRENTO_REPO%/*}/
     if zypper lr --details | cut -d'|' -f9 | grep $path  >/dev/null 2>/dev/null; then
@@ -199,14 +178,14 @@ function install_trento() {
 
 function setup_trento() {
     # All setting are done by the rpm package
-    # If it doesn't automatically start, let's start it here
+    # These are good manners to disable all installed services explicitelly
     # Pay attention, the service is called -----> trento-agent <-------
-    echo "* Starting trento"
-    systemctl enable --now trento-agent
+    echo "* Setting up trento"
+    systemctl disable --now trento-agent
 }
 
-install_consul
-setup_consul
+install_kvstore
+setup_kvstore
 install_trento
 setup_trento
 echo -e "\e[92mDone.\e[97m"

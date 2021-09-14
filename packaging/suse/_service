@@ -8,7 +8,7 @@
         <param name="extract">web/frontend/package.json</param>
         <param name="extract">web/frontend/package-lock.json</param>
         <param name="exclude">web/frontend/package-lock.json</param>
-        <param name="versionformat">%%VERSION%%+%ct.%h</param>
+        <param name="versionformat">%%VERSION%%</param>
         <param name="filename">trento</param>
     </service>
     <service name="set_version" mode="disabled">

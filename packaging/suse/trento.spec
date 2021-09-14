@@ -18,7 +18,7 @@
 
 Name:           trento
 # Version will be processed via set_version source service
-Version:        0.4.0+1630322269.39b75d7
+Version:        0
 Release:        0
 License:        Apache-2.0
 Summary:        An open cloud-native web console improving on the life of SAP Applications administrators .

@@ -6,15 +6,29 @@ env:
   OBS_PASS: ${{ secrets.OBS_PASS }}
   OBS_PROJECT: ${{ secrets.OBS_PROJECT}}
   TARGET_PROJECT: ${{ secrets.TARGET_PROJECT}}
-  VERSION: "0.4.1"
   FOLDER: packaging/suse
+  GITHUB_OAUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
   validation:
     runs-on: ubuntu-18.04
+    env:
+      GITHUB_OAUTH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
     steps:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+    - name: prepare changes file
+      run: |
+        echo "Prepare changes file"
+        VERSION=$(hack/get_version_from_git.sh)
+        echo "VERSION=$VERSION"
+        echo $GITHUB_OAUTH_TOKEN
+        .ci/gh_release_to_obs_changeset.py aleksei-burlakov/trento \
+           -a shap-staff@suse.de \
+           -t a730bfbb6c9ab1be602d20ad3871509310a3a7c6 \
+           -f foo.changes
+        find . -name foo.changes
+        cat $(find . -name foo.changes)
 
   delivery:
     needs: validation
@@ -45,8 +59,7 @@ jobs:
         go version
     - name: deliver package
       run: |
-        echo "github.sha = ${{ github.sha }}"
-        echo "github.repository = ${{ github.repository }}"
+        VERSION=$(hack/get_version_from_git.sh)
         sed -i 's~%%REVISION%%~${{ github.sha }}~' $FOLDER/_service && \
         sed -i 's~%%REPOSITORY%%~${{ github.repository }}~' $FOLDER/_service && \
         sed -i 's~%%VERSION%%~${ VERSION }~' $FOLDER/_service && \
@@ -70,6 +83,7 @@ jobs:
         cp /root/.config/osc/oscrc $HOME/.config/osc
     - name: submit package
       run: |
+       VERSION=$(hack/get_version_from_git.sh)
        sed -i 's~%%REVISION%%~${{ github.sha }}~' $FOLDER/_service && \
        sed -i 's~%%REPOSITORY%%~${{ github.repository }}~' $FOLDER/_service && \
        sed -i 's~%%VERSION%%~${VERSION}~' $FOLDER/_service && \

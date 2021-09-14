@@ -33,6 +33,10 @@ request = urllib.request.Request(url)
 print("releaseSegment = " + releaseSegment)
 print("url = " + url)
 
+# you can use your PAT for githubToken
+# when using the curl do
+# $ curl -i -u aleksei-burlakov:$CR_PAT https://api.github.com/repos/trento-project/trento/releases/tags/0.3.0
+# pay attention, that the tag exists in the remote
 githubToken = os.getenv("GITHUB_OAUTH_TOKEN")
 if githubToken:
     request.add_header("Authorization", "token " + githubToken)

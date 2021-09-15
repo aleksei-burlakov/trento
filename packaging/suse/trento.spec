@@ -68,7 +68,7 @@ make build
 install -D -m 0755 %{shortname} "%{buildroot}%{_bindir}/%{shortname}"
 
 # Install the systemd unit
-install -D -m 0644 hack/trento-agent.service %{buildroot}%{_unitdir}/trento-agent.service
+install -D -m 0644 trento-agent.service %{buildroot}%{_unitdir}/trento-agent.service
 sed -i "s+/srv/trento/trento agent start+trento agent start+g" %{buildroot}%{_unitdir}/trento-agent.service
 
 # Install compat wrapper for legacy init systems

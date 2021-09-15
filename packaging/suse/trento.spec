@@ -75,10 +75,6 @@ sed -i "s+/srv/trento/trento agent start+trento agent start+g" %{buildroot}%{_un
 install -Dd -m 0755 %{buildroot}%{_sbindir}
 ln -s /usr/sbin/service %{buildroot}%{_sbindir}/rc%{name}
 
-# Install checkers
-install -D -m 0644 examples/hana-scale-up-perf-optimized-azure.yaml "%{buildroot}/srv/%{shortname}/examples/hana-scale-up-perf-optimized-azure.yaml"
-install -D -m 0644 examples/generic-azure.yaml "%{buildroot}/srv/%{shortname}/examples/generic-azure.yaml"
-
 # Create a link
 #ln -s "%{buildroot}%{_bindir}/%{shortname}" "%{buildroot}/srv/%{shortname}/"
 
@@ -106,9 +102,5 @@ install -D -m 0644 examples/generic-azure.yaml "%{buildroot}/srv/%{shortname}/ex
 %{_bindir}/%{shortname}
 %{_unitdir}/trento-agent.service
 %{_sbindir}/rc%{name}
-%dir /srv/%{shortname}/
-%dir /srv/%{shortname}/examples/
-%config /srv/%{shortname}/examples/generic-azure.yaml
-%config /srv/%{shortname}/examples/hana-scale-up-perf-optimized-azure.yaml
 
 %changelog

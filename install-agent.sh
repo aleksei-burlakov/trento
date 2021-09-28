@@ -39,6 +39,8 @@ ARGUMENT_LIST=(
     "rolling"
 )
 
+
+
 opts=$(
     getopt \
         --longoptions "$(printf "%s," "${ARGUMENT_LIST[@]}")" \
@@ -62,10 +64,18 @@ while [[ $# -gt 0 ]]; do
         ;;
 
     --rolling)
-        TRENTO_REPO=${TRENTO_REPO:-"https://download.opensuse.org/repositories/devel:/sap:/trento:/factory/15.3/devel:sap:trento:factory.repo"}
-        TRENTO_REPO_KEY=${TRENTO_REPO_KEY:-"https://download.opensuse.org/repositories/devel:/sap:/trento:/factory/15.3/repodata/repomd.xml.key"}
-
+        USE_ROLLING="true"
         shift 1
+        ;;
+
+    --use-tgz)
+        USE_TGZ="true"
+        shift 1
+        ;;
+
+    --install-from)
+        INSTALL_FROM=$2
+        shift 2
         ;;
 
     *)
@@ -74,8 +84,32 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-TRENTO_REPO=${TRENTO_REPO:-"https://download.opensuse.org/repositories/devel:/sap:/trento/15.3/devel:sap:trento.repo"}
-TRENTO_REPO_KEY=${TRENTO_REPO_KEY:-"https://download.opensuse.org/repositories/devel:/sap:/trento/15.3/repodata/repomd.xml.key"}
+if [[ -z "$USE_TGZ " && -z "$USE_ROLLING" ]] ; then
+    # The default
+    TRENTO_REPO=${TRENTO_REPO:-"https://download.opensuse.org/repositories/devel:/sap:/trento/15.3/devel:sap:trento.repo"}
+    TRENTO_REPO_KEY=${TRENTO_REPO_KEY:-"https://download.opensuse.org/repositories/devel:/sap:/trento/15.3/repodata/repomd.xml.key"}
+elif [[ -z "$USE_TGZ " && -n "$USE_ROLLING" ]] ; then
+    TRENTO_REPO=${TRENTO_REPO:-"https://download.opensuse.org/repositories/devel:/sap:/trento:/factory/15.3/devel:sap:trento:factory.repo"}
+    TRENTO_REPO_KEY=${TRENTO_REPO_KEY:-"https://download.opensuse.org/repositories/devel:/sap:/trento:/factory/15.3/repodata/repomd.xml.key"}
+elif [[ -n "$USE_TGZ " && -z "$USE_ROLLING" ]] ; then
+    TRENTO_REPO=
+    TRENTO_REPO_KEY=
+elif [[ -n "$USE_TGZ " && -n "$USE_ROLLING" ]] ; then
+    TRENTO_REPO=
+    TRENTO_REPO_KEY=
+fi    
+
+# Download and install the stable RPM
+    
+
+# Download and install the rolling RPM
+if [[ -z "$USE_TGZ" && -n "$USE_ROLLING" ]] ; then
+    
+fi
+
+# Download and install the rolling tgz
+
+# Download and install the stable tgz
 
 CONSUL_VERSION=1.9.6
 CONSUL_PATH=/srv/consul
@@ -135,6 +169,11 @@ function configure_installation() {
     if [ -z "$SERVER_IP" ]; then
         read -rp "Please provide the server IP: " SERVER_IP </dev/tty
     fi
+    if [ -z "$INSTALL_FROM" ]; then
+        INSTALL_FROM=${INSTALL_STABLE}
+        read -rp "Please provide the server IP: " SERVER_IP </dev/tty
+    else
+    fi
 }
 
 function install_consul() {
@@ -163,6 +202,23 @@ function setup_consul() {
 }
 
 function install_trento() {
+    if [ -z "$USE_TGZ" ] ; then
+        install_trento_tgz
+    else
+        install_trento_rpm
+    fi
+}
+
+function install_trento_rpm() {
+    if [[ -z "$USE_ROLLING" ]] ; then
+        # The default
+        TRENTO_REPO=${TRENTO_REPO:-"https://download.opensuse.org/repositories/devel:/sap:/trento/15.3/devel:sap:trento.repo"}
+        TRENTO_REPO_KEY=${TRENTO_REPO_KEY:-"https://download.opensuse.org/repositories/devel:/sap:/trento/15.3/repodata/repomd.xml.key"}
+    elif [[ -n "$USE_ROLLING" ]] ; then
+        TRENTO_REPO=${TRENTO_REPO:-"https://download.opensuse.org/repositories/devel:/sap:/trento:/factory/15.3/devel:sap:trento:factory.repo"}
+        TRENTO_REPO_KEY=${TRENTO_REPO_KEY:-"https://download.opensuse.org/repositories/devel:/sap:/trento:/factory/15.3/repodata/repomd.xml.key"}
+    fi
+
     rpm --import "${TRENTO_REPO_KEY}" >/dev/null
     path=${TRENTO_REPO%/*}/
     if zypper lr --details | cut -d'|' -f9 | grep "$path" >/dev/null 2>&1; then
@@ -178,6 +234,20 @@ function install_trento() {
     else
         echo "* Installing trento"
         zypper in -y trento >/dev/null
+    fi
+}
+
+function install_trento_tgz() {
+    if [[ -z "$USE_ROLLING" ]] ; then
+        # The default
+        TRENTO_TGZ_URL=https://github.com/trento-project/trento/releases/download/stable/trento-amd64.gz
+        TRENTO_TGZ_URL=https://github.com/trento-project/trento/releases/download/rolling/trento-amd64.gz
+    elif [[ -n "$USE_ROLLING" ]] ; then
+        TRENTO_TGZ_URL=https://github.com/trento-project/trento/releases/download/latest/trento-amd64.gz
+    fi
+    TRENTO_TGZ_URL = blabla-release.tgz
+    if USE_ROLLING
+        TRENTO_TGZ_URL = blabla-rolling.tgz
     fi
 }
 

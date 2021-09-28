@@ -105,6 +105,49 @@ jobs:
           name: trento-amd64-binary
           path: build/trento-amd64.gz
 
+  release-rolling:
+    name: "Pre Release"
+    needs: build
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: trento-binaries
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "rolling"
+          prerelease: true
+          title: "Development Build"
+          files: |
+            trento-amd64.gz
+            trento-arm64.gz
+            trento-ppc64le.gz
+            trento-s390x.gz
+
+  release-stable:
+    name: "Latest release"
+    if: github.event.release
+    needs: build
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: trento-binaries
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "stable"
+          prerelease: false
+          title: "Stable release"
+          files: |
+            trento-amd64.gz
+            trento-arm64.gz
+            trento-ppc64le.gz
+            trento-s390x.gz
+
   install-server:
     runs-on: [ self-hosted, trento-gh-runner ]
     needs: test
@@ -146,18 +189,18 @@ jobs:
             ssh "$TARGET_USER@$target_host" "sudo systemctl enable --now trento-agent.service"
           done
 
-  upload-release-assets:
-    needs: build
-    if: github.event.release
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: trento-binaries
-      - uses: AButler/upload-release-assets@v2.0
-        with:
-          files: "trento-*"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+  #upload-release-assets:
+  #  needs: build
+  #  if: github.event.release
+  #  runs-on: ubuntu-20.04
+  #  steps:
+  #    - uses: actions/download-artifact@v2
+  #      with:
+  #        name: trento-binaries
+  #    - uses: AButler/upload-release-assets@v2.0
+  #      with:
+  #        files: "trento-*"
+  #        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-push-image:
     needs: test

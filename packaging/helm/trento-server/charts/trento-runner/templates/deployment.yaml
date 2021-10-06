@@ -37,7 +37,7 @@ spec:
             - --consul-addr
             - "{{ .Release.Name }}-consul-server:8500"
             - -i
-            - "5"
+            - "1"
           env:
             - name: CONSUL_HTTP_ADDR
               value:

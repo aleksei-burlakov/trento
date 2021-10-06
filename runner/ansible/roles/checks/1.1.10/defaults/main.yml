@@ -1,0 +1,18 @@
+---
+
+name: 1.1.10
+group: Corosync
+labels: generic
+description: |
+  Test if corosync.conf is identical acress all nodes
+remediation: |
+  ## Abstract
+  It is required that the corosync.conf files are identical across nodes.
+
+  ## References
+  - section 9.1.3 in https://documentation.suse.com/sbp/all/single-html/SLES4SAP-hana-sr-guide-PerfOpt-15/#id-adapting-the-corosync-and-sbd-configuration
+implementation: "{{ lookup('file', 'roles/checks/'+name+'/tasks/main.yml') }}"
+on_failure: warning
+
+# check id. This value must not be changed over the life of this check
+id: BA215C

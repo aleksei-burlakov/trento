@@ -1,0 +1,32 @@
+---
+- name: Get corosync configuration file content
+  command: md5sum /etc/corosync/corosync.conf
+  register: corosync_md5_content
+  when:
+    - ansible_check_mode
+
+- name: Set corosync configuration file content
+  set_fact:
+    corosync_file_md5: "{{ corosync_md5_content.stdout }}"
+  delegate_facts: True
+  when:
+    - ansible_check_mode
+
+- name: "{{ name }}.check"
+  assert:
+    that:
+      - "{{ groups[item] | map('extract', hostvars) | map(attribute='corosync_file_md5') | list | unique | length }} == 1"
+    quiet: true
+  loop: "{{ group_names }}"
+  register: result
+  when:
+    - ansible_check_mode
+
+- block:
+    - name: Post results
+      import_role:
+        name: post-results
+  when:
+    - ansible_check_mode
+  vars:
+    status: not result.results[0].failed

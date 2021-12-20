@@ -199,8 +199,11 @@ func NewAppWithDeps(config *Config, deps Dependencies) (*App, error) {
 	}
 
 	collectorEngine := deps.collectorEngine
+	log.Infof("DEBUGMSG: POST DEPS.COLLECTOR_SERVICE")
 	collectorEngine.POST("/api/collect", ApiCollectDataHandler(deps.collectorService))
+	log.Infof("DEBUGMSG: POST DEPS.HOSTS_SERVICE")
 	collectorEngine.POST("/api/hosts/:id/heartbeat", ApiHostHeartbeatHandler(deps.hostsService))
+	log.Infof("DEBUGMSG: POST DEPS.API_PING_HANDLER_SERVICE")
 	collectorEngine.GET("/api/ping", ApiPingHandler)
 
 	return app, nil

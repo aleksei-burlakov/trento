@@ -30,6 +30,9 @@ func clustersProjector_ClusterDiscoveryHandler(event *DataCollectedEvent, db *go
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 
+
+	log.Infof("DEBUGMSG: CLUSTER_PROJECTOR_CLUSTER_DISCOVERY_HANDLER_CALLED")
+
 	var cluster cluster.Cluster
 	if err := dec.Decode(&cluster); err != nil {
 		log.Errorf("can't decode data: %s", err)
@@ -190,7 +193,8 @@ func parseClusterNodes(c *cluster.Cluster) []*entities.HANAClusterNode {
 
 				switch {
 				case r.Active:
-					resource.Status = "active"
+					log.Infof("DEBUGMSG: WE HAVE JUST SET THE STATUS HECTIVE6")
+					resource.Status = "huective6"
 				case r.Blocked:
 					resource.Status = "blocked"
 				case r.Failed:

@@ -410,7 +410,7 @@ func TestClusterHandlerHANA(t *testing.T) {
 							ID:        "sbd",
 							Type:      "stonith:external/sbd",
 							Role:      "Started",
-							Status:    "active",
+							Status:    "huective",
 							FailCount: 0,
 						},
 					},

@@ -11,9 +11,9 @@ checkIntervalMins: 5
 replicaCount: 1
 
 image:
-  repository: ghcr.io/trento-project/trento-runner
+  repository: ghcr.io/aleksei-burlakov/trento-runner
   pullPolicy: Always
-  tag: "rolling"
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""

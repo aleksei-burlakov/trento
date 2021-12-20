@@ -8,9 +8,9 @@ global:
 replicaCount: 1
 
 image:
-  repository: ghcr.io/trento-project/trento-web
+  repository: ghcr.io/aleksei-burlakov/trento-web
   pullPolicy: Always
-  tag: "rolling"
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""

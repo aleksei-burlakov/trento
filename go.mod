@@ -33,7 +33,7 @@ require (
 	golang.org/x/tools v0.1.5 // indirect
 	gorm.io/datatypes v1.0.2
 	gorm.io/driver/postgres v1.1.2
-	gorm.io/gorm v1.21.15
+	gorm.io/gorm v1.22.4
 )
 
 replace github.com/trento-project/trento => ./

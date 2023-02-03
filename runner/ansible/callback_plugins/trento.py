@@ -124,9 +124,6 @@ class CallbackModule(CallbackBase):
         self.playbook = None
         self.play = None
         self.results = Results()
-        host = os.getenv('TRENTO_WEB_API_HOST')
-        port = os.getenv('TRENTO_WEB_API_PORT')
-        self._trento_api_url = "http://{}:{}".format(host, port)
 
     def v2_playbook_on_start(self, playbook):
         """
@@ -205,7 +202,6 @@ class CallbackModule(CallbackBase):
             return
 
         self._display.banner("Publishing Trento results")
-        self._post_results(self.results.results)
 
     def _all_vars(self, host=None, task=None):
         """

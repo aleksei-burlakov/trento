@@ -35,3 +35,4 @@
       loop_control:
         loop_var: check_item  # Do not change the name. It is use in the trento callback call
       when: ((lookup("file", check_item.path+"/defaults/main.yml")|from_yaml).id|string)|default("") in cluster_selected_checks_list
+      #when: (check_item.path | basename) in cluster_selected_checks_list

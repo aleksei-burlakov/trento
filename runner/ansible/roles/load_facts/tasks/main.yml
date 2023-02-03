@@ -16,7 +16,8 @@
 
 - name: set default value to cluster_selected_checks_list
   set_fact:
-    cluster_selected_checks_list: "{{ cluster_selected_checks|default([]) }}"
+    #cluster_selected_checks_list: "{{ cluster_selected_checks|default([]) }}"
+    cluster_selected_checks_list: "156F64,53D035,A1244C,FB0E0D,845CC9,00081D"
 
 - name: debug loaded vars
   debug:
